@@ -47,8 +47,8 @@ data = {
         None,
         None,
         None,
-        None,
         "Salmon with buckwheat",
+        None,
         None,
         None,
         None,
@@ -71,21 +71,29 @@ for i in range(len(df)):
   if pd.notna(df.loc[i, "food"]):
     base = df.loc[i, "gliukose_mg_dl"]
     food = df.loc[i, "food"]
-    ini_time = df.loc[i, 'hour']
 
     # Paimame kitas 2 valandas (i+1 ir i+2 eilutes)
-    future = df.loc[i + 1 : i + 3, "gliukose_mg_dl"]
-   # back_level =df.loc[i : i + 6, "gliukose_mg_dl"]
+    future = df.loc[i + 1 : i + 3]
+# back_level =df.loc[i : i + 6, "gliukose_mg_dl"]
 
     if not future.empty:
-      m_val = future.max()
+      m_val = future["gliukose_mg_dl"].max()
       spike = m_val - base
+# i find when glucoze normalised
+      recovery_rows = future[future["gliukose_mg_dl"] <= base] #kad galeciau loopint
+      if not recovery_rows.empty:
+# take the row when it normalised
+        recovery_row = recovery_rows.iloc[0]
+        recovery_time = recovery_row['hour']
+# i need to grab original index of the recovery row in the main df
+        recovery_index = recovery_rows.index[0]
+        duration = recovery_index - i
+      else:
+        recovery_time = "Did not return"
+        duration = None
 
 
-
-
-
-      results_list.append({'Food': food, 'Base': base, 'Peak': m_val, 'Spike': spike})
+      results_list.append({'Food': food, 'Base': base, 'Peak': m_val, 'Spike': spike, 'Duration': duration})
 
 core = pd.DataFrame(results_list)
 print(core)

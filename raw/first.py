@@ -1,6 +1,5 @@
 import pandas as pd
 
-# Sukuriame vienos dienos duomenis kas valandą (nuo 7:00 iki 21:00)
 data = {
     "hour": [
         "07:00",
@@ -55,47 +54,62 @@ data = {
     ],
 }
 
-# Paverčiame žodyną į Pandas lentelę
 df = pd.DataFrame(data)
 
-# Atspausdiname pradinę lentelę
-print("INITIAL TABLE:")
-print(df.to_string(index=False))
-print("-" * 50)
-print("RESULTS (Glucose spikes after meals):")
+results_list = []
 
-results_list=[]
-# Einam per kiekvieną eilutę pagal indeksą
 for i in range(len(df)):
-  # Patikriname, ar šioje eilutėje yra įrašytas maistas
   if pd.notna(df.loc[i, "food"]):
     base = df.loc[i, "gliukose_mg_dl"]
     food = df.loc[i, "food"]
 
-    # Paimame kitas 2 valandas (i+1 ir i+2 eilutes)
-    future = df.loc[i + 1 : i + 3]
-# back_level =df.loc[i : i + 6, "gliukose_mg_dl"]
+    # 1. Atspausdinkime, kokį maistą nagrinėjame
+    print(f"\n--- Tikrinama: {food} (Indeksas: {i}, Bazė: {base}) ---")
+
+    future_slice = df.loc[i + 1 :]
+    subsequent_meals = future_slice[future_slice["food"].notna()]
+
+    if not subsequent_meals.empty:
+      next_meal_idx = subsequent_meals.index[0]
+      future = df.loc[i + 1 : next_meal_idx - 1]
+    else:
+      future = df.loc[i + 1 :]
+
+    print("Būsimas langas (future):")
+    print(future[["hour", "gliukose_mg_dl"]])
 
     if not future.empty:
       m_val = future["gliukose_mg_dl"].max()
       spike = m_val - base
-# i find when glucoze normalised
-      recovery_rows = future[future["gliukose_mg_dl"] <= base] #kad galeciau loopint
+
+      # Ieškome sugrįžimo su tolerancija
+      target_limit = base + 5
+      recovery_rows = future[future["gliukose_mg_dl"] <= target_limit]
+
+      print(f"Ieškoma ribos <= {target_limit}. Rasta eilučių: {len(recovery_rows)}")
+
       if not recovery_rows.empty:
-# take the row when it normalised
         recovery_row = recovery_rows.iloc[0]
-        recovery_time = recovery_row['hour']
-# i need to grab original index of the recovery row in the main df
+        recovery_time = recovery_row["hour"]
         recovery_index = recovery_rows.index[0]
         duration = recovery_index - i
+        print(
+            f"Rastas sugrįžimas! Laikas: {recovery_time}, Trukmė: {duration}"
+            " val."
+        )
       else:
         recovery_time = "Did not return"
         duration = None
+        print("Sugrįžimas nerastas -> duration = None")
 
-
-      results_list.append({'Food': food, 'Base': base, 'Peak': m_val, 'Spike': spike, 'Duration': duration})
+      results_list.append({
+          "Food": food,
+          "Base": base,
+          "Peak": m_val,
+          "Spike": spike,
+          "Duration": duration,
+      })
 
 core = pd.DataFrame(results_list)
+print("\nGALUTINĖ LENTELĖ:")
 print(core)
-
-    
